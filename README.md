@@ -1,4 +1,4 @@
-# Transaction Fraud Detection — End-to-End ML Project
+# Transaction Fraud Detection
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?logo=fastapi)
