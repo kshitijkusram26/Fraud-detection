@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data — never commit raw data
+data/raw/
+data/processed/
+*.csv
+*.parquet
+
+# Models — large binary files
+models/*.pkl
+models/*.joblib
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Environment — never commit secrets
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fraud_postgres
+    restart: unless-stopped
+    environment:
+        POSTGRES_USER: fraud_user
+        POSTGRES_PASSWORD: fraud_pass
+        POSTGRES_DB: fraud_db
+    ports:
+        - '5432:5432'
+    volumes:
+        - postgres_data:/var/lib/postgresql/data
+        - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL','pg_isready -U fraud_user -d fraud_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  mlflow:
+    image: python:3.11-slim
+    container_name: fraud_mlflow
+    restart: unless-stopped
+    working_dir: /mlflow
+    command: >
+        bash -c "pip install mlflow psycopg2-binary -q &&
+        mlflow server
+        --backend-store-uri postgresql://fraud_user:fraud_pass@postgres:5432/mlflow_db
+        --default-artifact-root /mlflow/artifacts
+        --host 0.0.0.0
+        --port 5000"
+    ports:
+        - '5000:5000'
+    volumes:
+        - mlflow_artifacts:/mlflow/artifacts
+    depends_on:
+        postgres:
+            condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: fraud_api
+    restart: unless-stopped
+    ports:
+        - '8000:8000'
+    volumes:
+        - ./models:/apps/models
+    environment:
+      - DATABASE_URL=postgresql://fraud_user:fraud_pass@postgres:5432/fraud_db
+      - MODEL_PATH=/app/models/best_model.pkl
+      - PREPROCESSOR_PATH=/app/models/preprocessor.pkl
+      - FRAUD_THRESHOLD=0.5
+    depends_on:
+        postgres:
+            condition: service_healthy
+  dashboard:
+    build:
+        context: .
+        dockerfile: dashboard/Dockerfile
+    container_name: fraud_dashboard
+    restart: unless-stopped
+    ports:
+        - '8501:8501'
+    environment:
+        - API_URL=https://api:8000
+        - DATABASE_URL=postgresql://fraud_user:fraud_pass@postgres:5432/fraud_db
+        - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+        - api
+volumes:
+  postgres_data:
+  mlflow_artifacts:
