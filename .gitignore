@@ -17,8 +17,7 @@ data/processed/
 *.parquet
 
 # Models — large binary files
-models/*.pkl
-models/*.joblib
+
 
 # MLflow
 mlruns/
