@@ -34,6 +34,9 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Fraud Detection API...")
     if not ping_db():
         logger.warning("DB not reachable")
+    else:
+        from src.init_db import init_db
+        init_db()
     try:
         app.state.predictor = get_predictor()
         logger.info("Model loaded successfully")
