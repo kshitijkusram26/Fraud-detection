@@ -45,3 +45,6 @@ requests==2.31.0
 
 # ── Fix pyarrow conflict ────────────────────────────────────
 pyarrow==14.0.2
+slowapi
+limits
+python-dotenv

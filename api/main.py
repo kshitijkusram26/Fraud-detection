@@ -1,55 +1,62 @@
-import sys,os,time,uuid
+import sys, os, time, uuid
 from contextlib import asynccontextmanager
 from typing import List
 
-from fastapi import Depends,FastAPI,HTTPException,Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from loguru import logger
 from sqlalchemy.orm import Session
 
-
-sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.database import get_db,ping_db
-from src.models_db import Prediction,ModelVersion
-from src.predict import get_predictor,FraudPredictor
-from api.schemas import(
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.database import get_db, ping_db
+from src.models_db import Prediction, ModelVersion
+from src.predict import get_predictor, FraudPredictor
+from api.schemas import (
     TransactionRequest,
     PredictionResponse,
     BatchPredictionRequest,
     BatchPredictionResponse,
     HealthResponse,
     ModelInfoResponse,
-    MetricsResponse
+    MetricsResponse,
+    ErrorResponse,
 )
+from api.auth import verify_api_key          # 🔐 NEW
+from api.limiter import limiter              # 🚦 NEW
 
 
-
+# ── Lifespan ──────────────────────────────────────────────────────────────────
 @asynccontextmanager
-async def lifespan(app:FastAPI):
-    logger.info('starting Fraud Detection API....')
-
+async def lifespan(app: FastAPI):
+    logger.info("Starting Fraud Detection API...")
     if not ping_db():
-        logger.warning('DB not reachable')
+        logger.warning("DB not reachable")
     try:
-        app.state.predictor=get_predictor()
-        logger.info('model loaded successfully')
+        app.state.predictor = get_predictor()
+        logger.info("Model loaded successfully")
     except Exception as e:
-        logger.error(f'Model load failed:{e}')
-        app.state.predictor=None
-
-    app.state.stats={'total':0,'fraud':0,'legit':0}
-
+        logger.error(f"Model load failed: {e}")
+        app.state.predictor = None
+    app.state.stats = {"total": 0, "fraud": 0, "legit": 0}
     yield
-    logger.info('Shutting down API.....')
+    logger.info("Shutting down API...")
 
 
-
+# ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Fraud Detection API",
     description="""
 ## Transaction Fraud Detection
 
-Predict whether a financial transaction is fraudulent.
+Predict whether a financial transaction is fraudulent using ML models
+trained on the IEEE-CIS dataset (XGBoost / LightGBM).
+
+### Authentication
+All prediction endpoints require an **X-API-Key** header.
+Contact the provider to get your key.
 
 ### Endpoints
 - **POST /predict** — score a single transaction
@@ -62,14 +69,20 @@ Predict whether a financial transaction is fraudulent.
     lifespan=lifespan,
 )
 
-# Allow all origins for local development
+# ── Rate limiter state ────────────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ── CORS — lock this down in production ──────────────────────────────────────
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=['*'],
+    allow_origins=ALLOWED_ORIGINS,   # set ALLOWED_ORIGINS in .env for prod
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
 )
 
+# ── Latency header middleware ─────────────────────────────────────────────────
 @app.middleware("http")
 async def add_process_time(request: Request, call_next):
     start    = time.time()
@@ -78,7 +91,17 @@ async def add_process_time(request: Request, call_next):
     response.headers["X-Process-Time-Ms"] = str(ms)
     return response
 
+# ── Global exception handler ──────────────────────────────────────────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.url}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "status_code": 500},
+    )
 
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 def root():
     return {"message": "Fraud Detection API v1.0 — visit /docs"}
@@ -99,13 +122,9 @@ def health(request: Request):
 
 @app.get("/model/info", response_model=ModelInfoResponse, tags=["Model"])
 def model_info(db: Session = Depends(get_db)):
-    mv = db.query(ModelVersion).filter(
-        ModelVersion.is_active == True
-    ).first()
-
+    mv = db.query(ModelVersion).filter(ModelVersion.is_active == True).first()
     if not mv:
         raise HTTPException(status_code=404, detail="No active model found")
-
     return ModelInfoResponse(
         version   = mv.version,
         pr_auc    = float(mv.pr_auc)    if mv.pr_auc    else None,
@@ -115,15 +134,13 @@ def model_info(db: Session = Depends(get_db)):
         notes     = mv.notes,
     )
 
+
 @app.get("/metrics", response_model=MetricsResponse, tags=["System"])
 def metrics(request: Request, db: Session = Depends(get_db)):
-    stats       = request.app.state.stats
-    db_total    = db.query(Prediction).count()
-    db_fraud    = db.query(Prediction).filter(
-        Prediction.prediction == "FRAUD"
-    ).count()
-    fraud_rate  = round(db_fraud / db_total, 5) if db_total > 0 else 0.0
-
+    stats    = request.app.state.stats
+    db_total = db.query(Prediction).count()
+    db_fraud = db.query(Prediction).filter(Prediction.prediction == "FRAUD").count()
+    fraud_rate = round(db_fraud / db_total, 5) if db_total > 0 else 0.0
     return MetricsResponse(
         session_total = stats["total"],
         session_fraud = stats["fraud"],
@@ -133,7 +150,16 @@ def metrics(request: Request, db: Session = Depends(get_db)):
         fraud_rate_db = fraud_rate,
     )
 
-@app.post("/predict", response_model=PredictionResponse, tags=["Prediction"])
+
+# 🔐 Protected — requires X-API-Key header
+# 🚦 Rate limited — 60 requests/minute per IP
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+    tags=["Prediction"],
+    dependencies=[Depends(verify_api_key)],
+)
+@limiter.limit("60/minute")
 def predict(
     body: TransactionRequest,
     request: Request,
@@ -151,24 +177,16 @@ def predict(
     latency = round((time.time() - t_start) * 1000, 2)
 
     transaction_id = str(uuid.uuid4())
-
-    # Get active model version
-    mv            = db.query(ModelVersion).filter(
-        ModelVersion.is_active == True
-    ).first()
-    model_version = mv.version if mv else "unknown"
+    mv             = db.query(ModelVersion).filter(ModelVersion.is_active == True).first()
+    model_version  = mv.version if mv else "unknown"
 
     try:
         row = Prediction(
             transaction_id    = transaction_id,
             amount            = body.Amount,
             time_seconds      = body.Time,
-            v1                = body.V1,
-            v2                = body.V2,
-            v3                = body.V3,
-            v4                = body.V4,
-            v14               = body.V14,
-            v17               = body.V17,
+            v1=body.V1, v2=body.V2, v3=body.V3,
+            v4=body.V4, v14=body.V14, v17=body.V17,
             fraud_probability = result["fraud_probability"],
             prediction        = result["prediction"],
             confidence        = result["confidence"],
@@ -180,6 +198,7 @@ def predict(
     except Exception as e:
         logger.warning(f"Failed to log prediction to DB: {e}")
         db.rollback()
+
     request.app.state.stats["total"] += 1
     if result["prediction"] == "FRAUD":
         request.app.state.stats["fraud"] += 1
@@ -195,11 +214,16 @@ def predict(
         latency_ms        = latency,
     )
 
+
+# 🔐 Protected — requires X-API-Key header
+# 🚦 Rate limited — 10 batch requests/minute per IP
 @app.post(
     "/predict/batch",
     response_model=BatchPredictionResponse,
     tags=["Prediction"],
+    dependencies=[Depends(verify_api_key)],
 )
+@limiter.limit("10/minute")
 def predict_batch(
     body: BatchPredictionRequest,
     request: Request,
@@ -209,23 +233,15 @@ def predict_batch(
     if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
 
-    if len(body.transactions) > 5000:
-        raise HTTPException(
-            status_code=400,
-            detail="Max 5,000 transactions per batch request",
-        )
-
     t_start = time.time()
     records = [t.model_dump() for t in body.transactions]
     results = predictor.predict_batch(records)
     latency = round((time.time() - t_start) * 1000, 2)
-    mv            = db.query(ModelVersion).filter(
-        ModelVersion.is_active == True
-    ).first()
+
+    mv            = db.query(ModelVersion).filter(ModelVersion.is_active == True).first()
     model_version = mv.version if mv else "unknown"
     fraud_count   = sum(1 for r in results if r["prediction"] == "FRAUD")
 
-    # Bulk log to PostgreSQL
     try:
         db.bulk_insert_mappings(Prediction, [
             {
@@ -244,7 +260,7 @@ def predict_batch(
     except Exception as e:
         logger.warning(f"Batch DB log failed: {e}")
         db.rollback()
-    
+
     return BatchPredictionResponse(
         total         = len(results),
         fraud_count   = fraud_count,

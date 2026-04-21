@@ -104,3 +104,7 @@ class MetricsResponse(BaseModel):
     db_total: int
     db_fraud:int
     fraud_rate_db:float
+
+class ErrorResponse(BaseModel):
+    detail: str
+    status_code: int
