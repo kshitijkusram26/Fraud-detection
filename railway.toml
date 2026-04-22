@@ -5,6 +5,4 @@ dockerBuildContext = "."
 
 [deploy]
 startCommand = "uvicorn api.main:app --host 0.0.0.0 --port 8000"
-healthcheckPath = "/health"
-healthcheckTimeout = 120
 restartPolicyType = "on_failure"
