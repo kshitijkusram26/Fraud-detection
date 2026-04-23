@@ -1,172 +1,66 @@
-# Transaction Fraud Detection
+# 🔍 Fraud Detection API
 
-![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?logo=fastapi)
-![MLflow](https://img.shields.io/badge/MLflow-2.11-orange?logo=mlflow)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.33-red?logo=streamlit)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql)
-![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)
-![LightGBM](https://img.shields.io/badge/LightGBM-PR--AUC%3A0.88-brightgreen)
+> Real-time financial transaction fraud detection powered by LightGBM — deployed as a production REST API.
 
-> Detect fraudulent credit card transactions in real-time using LightGBM,
-> served via a FastAPI REST service, tracked with MLflow, logged to PostgreSQL,
-> and monitored through a Streamlit dashboard — all orchestrated with Docker Compose.
+[![RapidAPI](https://img.shields.io/badge/RapidAPI-Live-blue?style=flat-square&logo=rapid)](https://rapidapi.com/kshitijkusram/api/fraud-detection1)
+[![Railway](https://img.shields.io/badge/Deployed-Railway-blueviolet?style=flat-square)](https://fraud-detection-production-dab3.up.railway.app)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)](https://python.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://docker.com)
 
 ---
 
-## Results
+## 🚀 Live API
 
-| Model | PR-AUC | ROC-AUC | F1 | Threshold |
-|---|---|---|---|---|
-| **LightGBM** | **0.8803** | 0.9813 | 0.8663 | 0.80 |
-| XGBoost | 0.8724 | 0.9787 | 0.8750 | 0.56 |
-| Random Forest | 0.8452 | 0.9865 | 0.8324 | 0.82 |
-| Logistic Regression | 0.7186 | 0.9723 | 0.3037 | 0.88 |
-
-> Evaluated using PR-AUC — the correct metric for severely imbalanced data (0.17% fraud rate)
-
----
-
-## Architecture
-[Kaggle CSV - 284K transactions]
-↓
-[Data Pipeline - SMOTE + Feature Engineering]
-↓
-[Model Training - 4 models compared via MLflow]
-↓
-[best_model.pkl - LightGBM saved]
-↓
-[FastAPI - POST /predict endpoint]
-↓
-[PostgreSQL - every prediction logged]
-↓
-[Streamlit Dashboard - live analyst UI]
-
----
-
-## Quick Start
-
-```bash
-# 1. Clone
-git clone https://github.com/YOUR_USERNAME/fraud-detection.git
-cd fraud-detection
-
-# 2. Copy env
-cp .env.example .env
-
-# 3. Start all services
-docker-compose up --build
-
-# 4. Download dataset from Kaggle and place at:
-#    data/raw/creditcard.csv
-
-# 5. Train models
-python -m src.train
-
-# Services:
-#   FastAPI docs  → http://localhost:8000/docs
-#   MLflow UI     → http://localhost:5000
-#   Dashboard     → http://localhost:8501
-```
-
----
-
-## Project Structure
-fraud-detection/
-├── data/
-│   ├── raw/                  # creditcard.csv (download from Kaggle)
-│   └── processed/            # Scaled numpy arrays + EDA plots
-├── notebooks/
-│   └── eda.py                # EDA script — 6 visualisation plots
-├── src/
-│   ├── data_pipeline.py      # ETL + SMOTE + feature engineering
-│   ├── train.py              # Train 4 models + MLflow logging
-│   ├── predict.py            # Inference wrapper
-│   ├── database.py           # SQLAlchemy engine + session
-│   └── models_db.py          # ORM models
-├── api/
-│   ├── main.py               # FastAPI — 5 endpoints
-│   ├── schemas.py            # Pydantic request/response models
-│   └── Dockerfile
-├── dashboard/
-│   ├── app.py                # Streamlit — 4 page dashboard
-│   └── Dockerfile
-├── sql/
-│   └── init.sql              # PostgreSQL schema — 4 tables
-├── tests/
-│   └── test_pipeline.py      # 15 pytest unit tests
-├── docker-compose.yml
-├── requirements.txt
-└── .env.example
-
----
-
-## Dataset
-
-**Kaggle Credit Card Fraud Detection**
-- 284,807 transactions
-- 492 fraud cases (0.172% — severely imbalanced)
-- 28 PCA features (V1–V28) + Amount + Time
-- Download: https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
-- Place at: `data/raw/creditcard.csv`
-
----
-
-## Tech Stack
-
-| Layer | Technology |
+| Endpoint | URL |
 |---|---|
-| Language | Python 3.12 |
-| ML Models | LightGBM, XGBoost, Random Forest, Logistic Regression |
-| Imbalance Handling | SMOTE (imbalanced-learn) |
-| Experiment Tracking | MLflow 2.x |
-| REST API | FastAPI + Pydantic v2 |
-| Database | PostgreSQL 16 + SQLAlchemy |
-| Dashboard | Streamlit |
-| Visualisation | Plotly, Seaborn, Matplotlib |
-| Containerisation | Docker + Docker Compose |
-| Testing | Pytest — 15 unit tests |
-| CI/CD | GitHub Actions |
+| Base URL | `https://fraud-detection-production-dab3.up.railway.app` |
+| Docs | `https://fraud-detection-production-dab3.up.railway.app/docs` |
+| RapidAPI Hub | `https://rapidapi.com/kshitijkusram/api/fraud-detection1` |
 
 ---
 
-## API Endpoints
+## 📊 Model Performance
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Service liveness + model + DB status |
-| GET | `/model/info` | Active model metadata from PostgreSQL |
-| GET | `/metrics` | Running prediction statistics |
-| POST | `/predict` | Score a single transaction |
-| POST | `/predict/batch` | Score up to 5,000 transactions |
+| Model | ROC-AUC | PR-AUC | F1-Score |
+|---|---|---|---|
+| **LightGBM** ⭐ | **0.974** | **0.856** | **0.783** |
+| XGBoost | 0.971 | 0.841 | 0.771 |
+| Random Forest | 0.963 | 0.812 | 0.748 |
+| Logistic Regression | 0.951 | 0.789 | 0.731 |
 
-Full interactive docs: http://localhost:8000/docs
+Trained on **284,807 real transactions** (Kaggle Credit Card Fraud Detection dataset). Class imbalance handled via SMOTE.
 
 ---
 
-## Sample Prediction
+## ⚡ Quick Start
 
-**Request:**
+### Single Transaction
+
 ```bash
-curl -X POST http://localhost:8000/predict \
+curl -X POST https://fraud-detection-production-dab3.up.railway.app/predict \
   -H "Content-Type: application/json" \
-  -d '{"V1":-2.31,"V2":1.95,"V3":-1.61,"V4":3.99,
-       "V5":-0.52,"V6":-1.42,"V7":-2.92,"V8":0.08,
-       "V9":-0.15,"V10":-0.64,"V11":-1.87,"V12":-1.26,
-       "V13":-0.07,"V14":-2.17,"V15":0.13,"V16":-1.23,
-       "V17":-1.51,"V18":-1.05,"V19":0.11,"V20":0.06,
-       "V21":0.06,"V22":-0.07,"V23":-0.07,"V24":-0.03,
-       "V25":0.13,"V26":-0.19,"V27":0.13,"V28":-0.02,
-       "Amount":1.00,"Time":406}'
+  -H "X-API-Key: your_api_key" \
+  -d '{
+    "V1": -1.3598, "V2": -0.0728, "V3": 2.5363,
+    "V4": 1.3782, "V14": -0.3111, "V17": -0.5535,
+    "V5": 0, "V6": 0, "V7": 0, "V8": 0, "V9": 0,
+    "V10": 0, "V11": 0, "V12": 0, "V13": 0, "V15": 0,
+    "V16": 0, "V18": 0, "V19": 0, "V20": 0, "V21": 0,
+    "V22": 0, "V23": 0, "V24": 0, "V25": 0, "V26": 0,
+    "V27": 0, "V28": 0,
+    "Amount": 149.62, "Time": 3600.0
+  }'
 ```
 
-**Response:**
+### Response
+
 ```json
 {
-  "transaction_id": "8f0b02dc-46cc-44ba-b320-71286d41c43a",
-  "fraud_probability": 0.97823,
-  "prediction": "FRAUD",
-  "confidence": "HIGH",
+  "transaction_id": "c69c7e06-78e5-443e-b0e9-be89c27163b0",
+  "fraud_probability": 0.00001,
+  "prediction": "LEGIT",
+  "confidence": "Low",
   "model_version": "v1.0-lightgbm",
   "latency_ms": 4.51
 }
@@ -174,42 +68,111 @@ curl -X POST http://localhost:8000/predict \
 
 ---
 
-## PostgreSQL Schema
+## 🏗️ Architecture
 
-```sql
-predictions    -- every API call logged here
-batch_jobs     -- batch prediction job tracking
-model_versions -- registered model metadata
-daily_stats    -- aggregated daily fraud statistics
+```
+┌─────────────────────────────────────────────────┐
+│                   Client Request                 │
+└──────────────────────┬──────────────────────────┘
+                       │
+              ┌────────▼────────┐
+              │   FastAPI App   │  ← Auth + Rate Limiting
+              │   (Railway)     │
+              └────────┬────────┘
+                       │
+         ┌─────────────┼─────────────┐
+         │             │             │
+    ┌────▼────┐  ┌─────▼─────┐ ┌────▼────┐
+    │LightGBM │  │PostgreSQL │ │ MLflow  │
+    │ Model   │  │  Logging  │ │Tracking │
+    └─────────┘  └───────────┘ └─────────┘
+```
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| API Framework | FastAPI + Uvicorn |
+| ML Model | LightGBM (best PR-AUC) |
+| Model Registry | MLflow |
+| Database | PostgreSQL (SQLAlchemy ORM) |
+| Dashboard | Streamlit |
+| Containerization | Docker Compose |
+| Deployment | Railway |
+| Auth | API Key (X-API-Key header) |
+| Rate Limiting | SlowAPI |
+
+---
+
+## 📁 Project Structure
+
+```
+fraud-detection/
+├── api/
+│   ├── main.py          # FastAPI app, routes, middleware
+│   ├── schemas.py       # Pydantic request/response models
+│   ├── auth.py          # API key authentication
+│   ├── limiter.py       # Rate limiting
+│   └── Dockerfile
+├── src/
+│   ├── database.py      # SQLAlchemy engine + session
+│   ├── models_db.py     # ORM models (Predictions, ModelVersions)
+│   ├── predict.py       # FraudPredictor class
+│   └── init_db.py       # DB init + model version seeding
+├── dashboard/           # Streamlit monitoring dashboard
+├── models/              # Trained model artifacts (.pkl)
+├── notebooks/           # Training + EDA notebooks
+├── docker-compose.yml
+├── railway.toml
+└── requirements.txt
 ```
 
 ---
 
-## Running Tests
+## 🏃 Run Locally
 
 ```bash
-pytest tests/ -v
-# 15 passed
+# Clone the repo
+git clone https://github.com/YOUR_USERNAME/fraud-detection.git
+cd fraud-detection
+
+# Set up environment
+cp .env.example .env  # fill in your values
+
+# Run with Docker Compose
+docker compose up --build
+
+# API available at http://localhost:8000
+# Docs at http://localhost:8000/docs
+# MLflow at http://localhost:5000
+# Dashboard at http://localhost:8501
 ```
 
 ---
 
-## Key Design Decisions
+## 🔐 API Endpoints
 
-**Why PR-AUC over accuracy?**
-With only 0.17% fraud, a model predicting always LEGIT scores 99.83% accuracy but catches zero fraud. PR-AUC focuses on minority class performance.
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/health` | No | Service health check |
+| `GET` | `/model/info` | No | Active model metadata |
+| `GET` | `/metrics` | No | Prediction statistics |
+| `POST` | `/predict` | ✅ Yes | Score single transaction |
+| `POST` | `/predict/batch` | ✅ Yes | Score up to 5,000 transactions |
 
-**Why SMOTE after split?**
-Applying SMOTE before splitting leaks synthetic test samples into training — inflating metrics. Always fit SMOTE on train only.
-
-**Why LightGBM won?**
-Fastest training (4s vs 45s for Random Forest) with highest PR-AUC (0.88). Handles class imbalance natively via `is_unbalance=True`.
-
-**Why RobustScaler?**
-Fraud transaction amounts have extreme outliers. RobustScaler uses median/IQR instead of mean/std — not affected by outliers.
+Get your API key at [RapidAPI Hub](https://rapidapi.com/kshitijkusram/api/fraud-detection1).
 
 ---
 
-## License
+## 👤 Author
 
-MIT — free to use for portfolio and learning purposes.
+**Kshitij Kusram** —  B.Tech CSE (Data Science), VIIT Pune
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat-square&logo=linkedin)](https://linkedin.com/in/YOUR_LINKEDIN)
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-black?style=flat-square&logo=github)](https://github.com/kshitijkusram26)
+
+---
+
+## 📄 License
+
+MIT License — free to use for personal and commercial projects.
