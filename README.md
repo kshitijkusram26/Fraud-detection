@@ -168,7 +168,7 @@ Get your API key at [RapidAPI Hub](https://rapidapi.com/kshitijkusram/api/fraud-
 
 **Kshitij Kusram** —  B.Tech CSE (Data Science), VIIT Pune
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat-square&logo=linkedin)](https://linkedin.com/in/YOUR_LINKEDIN)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/kshitij-kusram-46867828b/)
 [![GitHub](https://img.shields.io/badge/GitHub-Follow-black?style=flat-square&logo=github)](https://github.com/kshitijkusram26)
 
 ---
